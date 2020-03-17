@@ -1,0 +1,131 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>Line Chart</title>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/moment.js/2.13.0/moment.min.js"></script>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.4.0/Chart.bundle.js"></script>
+    <style>
+        canvas {
+            -moz-user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+        }
+    </style>
+</head>
+
+<body>
+<div style="width:100%;">
+    <canvas id="canvas"></canvas>
+</div>
+<script>
+    var timeFormat = 'MM/DD/YY';
+
+    let countrys = ["CH", "DE", "FR", "IT", "ES", "GB", "US", "CN"]
+    var datasets = [];
+	let url = 'https://coronavirus-tracker-api.herokuapp.com/confirmed';
+
+	fetch(url)
+	.then(res => res.json())
+	.then((out) => {
+	  datasets = generateDatasets(out, countrys);
+	})
+	.catch(err => { throw err });
+
+	function getRandomColor() {
+	  var letters = '0123456789ABCDEF';
+	  var color = '#';
+	  for (var i = 0; i < 6; i++) {
+	    color += letters[Math.floor(Math.random() * 16)];
+	  }
+	  return color;
+	}
+
+	function generateDatasets(data, countrys) {
+		for (const country of countrys) {
+			var dataPoints = [];
+			for (const entrie of getConfirmedHistoryDataByCountryCode(data, country)) {
+			  	dataPoints.push({
+					x: new Date(entrie[0]),
+					y: entrie[1]
+				});
+			}
+			dataPoints.sort(sortFunction);
+
+			console.log(JSON.stringify(dataPoints));
+			var dataset = {
+			        label: country,
+			        data: dataPoints,
+				    lineTension: 0,
+				    fill: false,
+			        borderColor: getRandomColor()
+			    };
+			datasets.push(dataset);
+		}
+
+		console.log(datasets);
+		return datasets;
+	}
+
+	function getConfirmedHistoryDataByCountryCode(data, countryCode) {
+		return Object.entries(data.locations.filter(function(v) {
+			return v.country_code==countryCode
+		})[0].history);
+	}
+
+	function sortFunction(a,b){  
+	    var dateA = a.x.getTime();
+	    var dateB = b.x.getTime();
+	    return dateA > dateB ? 1 : -1;  
+	}; 
+
+    window.onload = function () {
+    	var ctx = document.getElementById("canvas").getContext("2d");
+    	var config = {
+	        type:    'line',
+	        data:  {
+	        	datasets: datasets
+	        },
+	        options: {
+	        	responsive: true,
+	        	hoverMode: 'index',
+				stacked: false,
+	            title:      {
+	                display: true,
+	                text:    "Corona"
+	            },
+			    tooltips: {
+		            mode: 'index'
+		        },
+	            scales:     {
+	                xAxes: [{
+	                    type:       "time",
+	                    time:       {
+	                        format: timeFormat,
+	                        tooltipFormat: 'll'
+	                    },
+	                    scaleLabel: {
+	                        display:     true,
+	                        labelString: 'Date'
+	                    }
+	                }],
+	                yAxes: [{
+	                    scaleLabel: {
+	                        display:     true,
+	                        labelString: 'value'
+	                    }
+	                }]
+	            }
+	        }
+	    };
+        window.myLine = new Chart(ctx, config);
+    }
+
+
+
+</script>
+
+</body>
+
+</html>
