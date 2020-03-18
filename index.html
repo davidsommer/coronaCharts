@@ -3,12 +3,6 @@
 
 <head>
     <title>Corona Line Chart by country</title>
-	<script
-		src="https://code.jquery.com/jquery-3.4.1.min.js"
-		integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
-		crossorigin="anonymous">
-	</script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.js"></script>
     <style>
         canvas {
             -moz-user-select: none;
@@ -22,6 +16,12 @@
 <div style="width:100%;">
     <canvas id="canvas"></canvas>
 </div>
+<script
+src="https://code.jquery.com/jquery-3.4.1.min.js"
+integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+crossorigin="anonymous">
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.js"></script>
 <script>
     var timeFormat = 'MM/DD/YY';
 
@@ -126,9 +126,6 @@
 	}
 
 	drawLineChart();
-
 </script>
-
 </body>
-
 </html>
