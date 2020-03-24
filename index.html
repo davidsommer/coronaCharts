@@ -3,8 +3,23 @@
 
 <head>
 	<title>Corona Line Chart by country</title>
-	<style src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.css"></style>
-    <style>
+
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.css"></link>
+    <link rel="stylesheet" href="lib/css/choices.min.css" />
+
+	<script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+	<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.min.js"></script>
+	
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.9.1/underscore-min.js"></script>
+
+	<!-- <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js" integrity="sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU=" crossorigin="anonymous"></script>
+	-->
+	<script src="lib/js/choices.min.js"></script>
+
+	<style>
         canvas {
             -moz-user-select: none;
             -webkit-user-select: none;
@@ -14,49 +29,147 @@
 </head>
 
 <body>
-<div style="width:100%;">
-    <canvas id="canvas"></canvas>
-</div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.min.js"></script>
+	<div class="container">
+		<div class="row my-3">
+			<div class="col">
+				<h4>Corona Line Chart by country</h4>
+			</div>
+		</div>
+		<div class="row my-2">
+			<div class="col-md-12">
+				<div class="card">
+					<div class="card-body">
+						<canvas id="canvas"></canvas>
+					</div>
+					<div class="card-title"></div>
+					<select
+						class="form-control"
+						data-trigger
+						name="choices-multiple"
+						id="choices-multiple"
+						placeholder="This is a placeholder"
+						multiple
+					>
+					</select>
+				</div>
+			</div>
+		</div>
+	</div>
 <script>
-    var timeFormat = 'MM/DD/YY';
 
-	function generateDatasets(data, countrys) {
-		var datasets = [];
-
-		for (const country of countrys) {
-			var dataPoints = [];
-			for (const entrie of getConfirmedHistoryDataByCountryCode(data, country)) {
-				dataPoints.push({
-					x: new Date(entrie[0]),
-					y: entrie[1]
-				});
+	var timeFormat = 'MM/DD/YY';
+	var datasets = [];
+	var config = {
+		type:    'line',
+		data:  {
+			datasets: datasets
+		},
+		options: {
+			responsive: true,
+			hoverMode: 'index',
+			stacked: false,
+			title:      {
+				display: true,
+				text:    "Corona Line Chart by country"
+			},
+			tooltips: {
+				mode: 'index'
+			},
+			scales:     {
+				xAxes: [{
+					type:       "time",
+					time:       {
+						parse: timeFormat,
+						tooltipFormat: 'll'
+					},
+					scaleLabel: {
+						display:     true,
+						labelString: 'Date'
+					}
+				}],
+				yAxes: [{
+					scaleLabel: {
+						display:     true,
+						labelString: 'confirmed cases'
+					}
+				}]
 			}
-			dataPoints.sort(sortFunction);
+		}
+	};
+
+	// Get the context of the canvas element we want to select
+	var ctx = document.getElementById("canvas").getContext("2d");
+	// Instantiate a new chart
+	var myLineChart = new Chart(ctx, config);
+
+
+	const element = document.getElementById('choices-multiple');
+	const multipleFetch = new Choices(element, {
+          placeholder: false,
+		  removeItemButton: true,
+        });
+
+
+	function addCountry(countryCode) {
+		 fetch('https://coronavirus-tracker-api.herokuapp.com/v2/locations?country_code=' + countryCode + '&timelines=1')
+		.then(res => res.json())
+		.then((results) => {
+			var dataset = {
+					label: countryCode,
+					lineTension: 0,
+					fill: false,
+					borderColor: getRandomColor()
+				};
+
+			 var mergedResult = [];
+			 for(const location of results.locations) {
+				Object.keys(location.timelines.confirmed.timeline).forEach(function(key) {
+					mergedResult.push({
+					x: key,
+					y: location.timelines.confirmed.timeline[key]});
+				})
+			 }
+
+			var dataPoints = aggregate(mergedResult, "x", "y", add);
 
 			var dataset = {
-					label: country,
+					label: countryCode,
 					data: dataPoints,
 					lineTension: 0,
 					fill: false,
 					borderColor: getRandomColor()
 				};
-			datasets.push(dataset);
-		}
-		return datasets
+            addData(myLineChart, dataset)
+			return dataset;
+		})
+		.catch(err => { throw err });
 	}
 
-	function getConfirmedHistoryDataByCountryCode(data, countryCode) {
-		return Object.entries(data.locations.filter(function(v) {
-			return v.country_code==countryCode
-		})[0].history);
+	function aggregate(object, toGroup, toAggregate, fn, val0) {
+
+		function deepFlatten(x) {
+				if ( x[toGroup] !== undefined ) // Leaf
+					return x;
+				return _.chain(x)
+						.map(function(v) { return deepFlatten(v); })
+						.flatten()
+						.value();
+			}
+			return _.chain(deepFlatten(object))
+				.groupBy(toGroup)
+				.map(function(g, key) {
+					return {
+						x: key,
+						y: _(g).reduce(function(m, x) {
+							return fn(m, x[toAggregate]);
+						}, val0 || 0)
+					};
+				})
+				.sortBy(toGroup)
+			.value();
 	}
 
-	function sortFunction(a,b){  
-		var dateA = a.x.getTime();
-		var dateB = b.x.getTime();
-		return dateA > dateB ? 1 : -1;  
-	}; 
+	function add(a,b) { return a + b; }
 
 	function getRandomColor() {
 		var letters = '0123456789ABCDEF';
@@ -67,60 +180,71 @@
 		return color;
 	}
 
-	function drawLineChart() {
-		let countrys = ["CH", "DE", "FR", "IT", "ES", "GB", "US", "CN"]
+	function drawCountryDropdown() {
+		var countrysToSet = [ "CH", "DE", "FR", "ES", "GB", "US"]
 
-		fetch('https://coronavirus-tracker-api.herokuapp.com/confirmed')
-		.then(res => res.json())
-		.then((results) => {
-			var config = {
-				type:    'line',
-				data:  {
-					datasets: generateDatasets(results, countrys)
-				},
-				options: {
-					responsive: true,
-					hoverMode: 'index',
-					stacked: false,
-					title:      {
-						display: true,
-						text:    "Corona Line Chart by country"
-					},
-					tooltips: {
-						mode: 'index'
-					},
-					scales:     {
-						xAxes: [{
-							type:       "time",
-							time:       {
-								parse: timeFormat,
-								tooltipFormat: 'll'
-							},
-							scaleLabel: {
-								display:     true,
-								labelString: 'Date'
-							}
-						}],
-						yAxes: [{
-							scaleLabel: {
-								display:     true,
-								labelString: 'value'
-							}
-						}]
+		element.addEventListener(
+          'addItem',
+		  function(event) {
+			addCountry(event.detail.value);
+
+          }
+        );
+
+		element.addEventListener(
+          'removeItem',
+          function(event) {
+            removeData(myLineChart, event.detail.value)
+          }
+        );
+
+		multipleFetch.setChoices(async () => {
+			return fetch(
+            'https://coronavirus-tracker-api.herokuapp.com/v2/locations'
+          )
+            .then(function(response) {
+              return response.json();
+            })
+            .then(function(data) {
+				countrys = _.chain(data.locations)
+							.groupBy('country_code')
+							.map(function(value, key) {
+								return {
+									country_code: key,
+									country: value[0].country
+								}
+							})
+							.value();
+
+				return countrys.map(function(release) {
+					if (countrysToSet.includes(release.country_code)) {
+						return { value: release.country_code, label: release.country, selected: true };
+					} else {
+						return { value: release.country_code, label: release.country };
 					}
-				}
-			};
+				});
 
-			// Get the context of the canvas element we want to select
-			var ctx = document.getElementById("canvas").getContext("2d");
-			// Instantiate a new chart
-			var myLineChart = new Chart(ctx, config);
-		})
-		.catch(err => { throw err });
+            });
+		});
+		
 
 	}
 
-	drawLineChart();
+	function addData(chart, countryCode) {
+		chart.data.datasets.push(countryCode);
+		chart.update();
+	}
+
+	function removeData(chart, countryCode) {
+		chart.data.datasets = chart.data.datasets.filter(function(obj) {
+			return (obj.label != countryCode); 
+		});
+		chart.update();
+	}
+
+
+	drawCountryDropdown();
+
 </script>
 </body>
 </html>
